@@ -170,6 +170,48 @@ Saved shots/cve_7d.csv
 > 只要進度訊息一直在動，就代表程式正常，不用中斷它。
 > 一筆都沒找到時，CSV 仍然會產生，只是裡面只有標題列，畫面也會提示 `(no matching advisory, header only)`。
 
+### 📋 執行過程的 log 怎麼看
+
+每一行訊息代表什麼：
+
+| 訊息 | 意思 |
+|---|---|
+| `Looking for ... last N day(s)` | 開始了，告訴你這次要找幾天內的公告 |
+| `Opening browser (headless=True)` | 正在開瀏覽器。加了 `--show` 的話會顯示 `False` |
+| `Loading ... (attempt 1/3)` | 正在載入網頁。載入失敗會再出現 `attempt 2/3`、`attempt 3/3` |
+| `Page 1: 10 rows (最舊~最新), N match(es), N total` | 這一頁讀到幾筆、日期範圍、其中幾筆符合條件、目前總共累積幾筆 |
+| `Next page ...` | 正在翻到下一頁 |
+| `Closing browser ...` | 收工，關閉瀏覽器 |
+| `Local date ... cutoff ...` | 結果摘要：你電腦今天的日期、截止日、總共幾筆 |
+| `Saved xxx.csv` | CSV 存好了。一筆都沒有時會加註 `(no matching advisory, header only)` |
+
+需要翻頁時（例如公告比較多的情況），會看到這樣的過程：
+
+```
+Opening browser (headless=True) ...
+Loading https://support.checkpoint.com/security-advisories (attempt 1/3) ...
+Page 1: 10 rows (2026-05-26~2026-09-08), 8 match(es), 8 total
+Next page ...
+Page 2: 10 rows (2025-04-29~2026-05-26), 3 match(es), 11 total
+Closing browser ...
+```
+
+一筆都沒找到時（表示最近這幾天很平靜，沒有新的高風險公告）：
+
+```
+Page 1: 10 rows (2026-05-26~2026-09-08), 0 match(es), 0 total
+Closing browser ...
+Local date 2026-09-16 | cutoff 2026-09-09 (7 days) | 0 match(es)
+Saved checkpoint_cve.csv (no matching advisory, header only)
+```
+
+**進度訊息和結果是分開的**：進度走 stderr、結果走 stdout，所以
+
+```bash
+python crawler.py --days 7 > result.txt      # 檔案裡只有結果，進度照樣顯示在畫面上
+python crawler.py --days 7 > run.log 2>&1    # 進度和結果全部存進同一個檔案
+```
+
 ### ⚠️ 檔案會被覆蓋
 
 每次執行都會**直接覆蓋**同名的 CSV，不會累積。想保留每天的紀錄，可以把日期加進檔名：
