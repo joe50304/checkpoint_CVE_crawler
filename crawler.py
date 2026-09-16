@@ -15,6 +15,13 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36')
 
 
+def days_arg(v):
+    n = int(v)
+    if not 1 <= n <= 90:
+        raise argparse.ArgumentTypeError('days must be between 1 and 90')
+    return n
+
+
 def log(msg):
     """Progress goes to stderr so stdout keeps only the results."""
     print(msg, file=sys.stderr, flush=True)
@@ -110,8 +117,8 @@ def crawl(days, headless=True, shot=None, max_pages=50):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--days', type=int, choices=(3, 7), default=7,
-                    help='published within N days of local date (default 7)')
+    ap.add_argument('--days', type=days_arg, default=7, metavar='1-90',
+                    help='published within N days of local date, 1-90 (default 7)')
     ap.add_argument('--out', default='checkpoint_cve.csv', help='CSV output path')
     ap.add_argument('--shot', help='screenshot prefix; saves <prefix>_p<N>.png with matched rows highlighted')
     ap.add_argument('--show', action='store_true', help='run with visible browser')
