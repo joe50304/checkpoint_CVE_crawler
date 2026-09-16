@@ -15,6 +15,11 @@ UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36')
 
 
+def log(msg):
+    """Progress goes to stderr so stdout keeps only the results."""
+    print(msg, file=sys.stderr, flush=True)
+
+
 def human_pause(lo=1.0, hi=2.5):
     time.sleep(random.uniform(lo, hi))
 
@@ -61,10 +66,12 @@ def is_match(r, cutoff):
 
 def crawl(days, headless=True, shot=None, max_pages=50):
     cutoff = date.today() - timedelta(days=days)
+    log(f'Opening browser (headless={headless}) ...')
     page = make_page(headless)
     results = []
     try:
         for attempt in range(3):
+            log(f'Loading {URL} (attempt {attempt + 1}/3) ...')
             page.get(URL)
             if page.ele('tag:table', timeout=20):
                 break
@@ -78,6 +85,8 @@ def crawl(days, headless=True, shot=None, max_pages=50):
                 break
             hits = [(tr, r) for tr, r in rows if is_match(r, cutoff)]
             results += [r for _, r in hits]
+            log(f'Page {n}: {len(rows)} rows ({rows[-1][1]["published"]}~{rows[0][1]["published"]}), '
+                f'{len(hits)} match(es), {len(results)} total')
             if shot and (hits or n == 1):
                 for tr, _ in hits:
                     tr.run_js('this.style.outline="3px solid red";this.style.background="#fff3a0"')
@@ -89,10 +98,12 @@ def crawl(days, headless=True, shot=None, max_pages=50):
             if not nxt or nxt.attr('disabled') is not None:
                 break
             human_pause()
+            log('Next page ...')
             page.scroll.to_see(nxt)
             nxt.click()
             human_pause(0.8, 1.5)
     finally:
+        log('Closing browser ...')
         page.quit()
     return cutoff, results
 
@@ -106,6 +117,7 @@ def main():
     ap.add_argument('--show', action='store_true', help='run with visible browser')
     a = ap.parse_args()
 
+    log(f'Looking for Critical/High advisories published in the last {a.days} day(s) ...')
     cutoff, results = crawl(a.days, headless=not a.show, shot=a.shot)
     print(f'Local date {date.today()} | cutoff {cutoff} ({a.days} days) | {len(results)} match(es)')
     for r in results:
@@ -114,7 +126,7 @@ def main():
         w = csv.DictWriter(f, fieldnames=['cve', 'severity', 'cvss', 'published', 'updated', 'summary', 'link'])
         w.writeheader()
         w.writerows(results)
-    print(f'Saved {a.out}')
+    print(f'Saved {a.out}' + ('' if results else ' (no matching advisory, header only)'))
 
 
 if __name__ == '__main__':
